@@ -42,11 +42,13 @@ func (h *host) Check() {
 func (h *host) send() error {
 	hcping := new(dns.Msg)
 	hcping.SetQuestion(".", dns.TypeNS)
-	// RecursionDesired is set to true because 9.9.9.9 replies with REFUSED and no
-	// question section, which triggers an error.
-	hcping.RecursionDesired = true
+	hcping.RecursionDesired = false
 
 	_, _, err := h.client.Exchange(hcping, h.addr)
+	// Truncated means we've seen TC, which is good enough for us.
+	if err == dns.ErrTruncated {
+		err = nil
+	}
 	return err
 }
 
