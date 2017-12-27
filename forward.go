@@ -76,12 +76,14 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 			conn.UDPSize = 512
 		}
 
+		conn.SetWriteDeadline(time.Now().Add(timeout))
 		if err := conn.WriteMsg(state.Req); err != nil {
 			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host.addr, err)
 			conn.Close() // not giving it back
 			continue
 		}
 
+		conn.SetReadDeadline(time.Now().Add(timeout))
 		ret, err := conn.ReadMsg()
 		if err != nil {
 			log.Printf("[WARNING] Failed to read with %s to %s: %s", proto, proxy.host.addr, err)
