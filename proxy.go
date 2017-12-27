@@ -70,5 +70,5 @@ func (p *proxy) healthCheck() {
 
 const (
 	dialTimeout = 4 * time.Second
-	hcDuration  = 500 * time.Millisecond
+	hcDuration  = 2 * time.Second
 )

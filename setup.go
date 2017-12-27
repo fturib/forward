@@ -106,7 +106,6 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 			// We set it below at the end of parseBlock.
 			p := newProxy(h)
 			f.proxies = append(f.proxies, p)
-
 		}
 
 		for c.NextBlock() {
