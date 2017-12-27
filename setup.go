@@ -8,6 +8,7 @@ import (
 
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+	"github.com/coredns/coredns/plugin/metrics"
 	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	pkgtls "github.com/coredns/coredns/plugin/pkg/tls"
 
@@ -33,6 +34,20 @@ func setup(c *caddy.Controller) error {
 	})
 
 	c.OnStartup(func() error {
+		once.Do(func() {
+			m := dnsserver.GetConfig(c).Handler("prometheus")
+			if m == nil {
+				return
+			}
+			if x, ok := m.(*metrics.Metrics); ok {
+				x.MustRegister(RequestCount)
+				x.MustRegister(RcodeCount)
+				x.MustRegister(RequestDuration)
+				x.MustRegister(HealthcheckFailureCount)
+				x.MustRegister(SocketGauge)
+			}
+		})
+
 		return f.OnStartup()
 	})
 	c.OnShutdown(func() error {

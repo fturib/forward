@@ -1,6 +1,8 @@
 package forward
 
 import (
+	"sync"
+
 	"github.com/coredns/coredns/plugin"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,10 +43,4 @@ var (
 	}, []string{"to"})
 )
 
-func init() {
-	prometheus.MustRegister(RequestCount)
-	prometheus.MustRegister(RcodeCount)
-	prometheus.MustRegister(RequestDuration)
-	prometheus.MustRegister(HealthcheckFailureCount)
-	prometheus.MustRegister(SocketGauge)
-}
+var once sync.Once
