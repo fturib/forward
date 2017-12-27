@@ -70,6 +70,12 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 			continue
 		}
 
+		// Set buffer size correctly for this client.
+		conn.UDPSize = uint16(state.Size())
+		if conn.UDPSize < 512 {
+			conn.UDPSize = 512
+		}
+
 		if err := conn.WriteMsg(state.Req); err != nil {
 			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host.addr, err)
 			conn.Close() // not giving it back

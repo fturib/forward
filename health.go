@@ -43,6 +43,7 @@ func (h *host) send() error {
 	hcping := new(dns.Msg)
 	hcping.SetQuestion(".", dns.TypeNS)
 	hcping.RecursionDesired = false
+	hcping.SetEdns0(4096, false) // bufsize to 4K, no DNSSEC.
 
 	_, _, err := h.client.Exchange(hcping, h.addr)
 	// Truncated means we've seen TC, which is good enough for us.
