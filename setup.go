@@ -47,9 +47,9 @@ func setup(c *caddy.Controller) error {
 				x.MustRegister(SocketGauge)
 			}
 		})
-
 		return f.OnStartup()
 	})
+
 	c.OnShutdown(func() error {
 		return f.OnShutdown()
 	})
