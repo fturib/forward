@@ -85,7 +85,7 @@ func (f *Forward) OnShutdown() error {
 }
 
 func parseForward(c *caddy.Controller) (Forward, error) {
-	f := Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second}
+	f := Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second, hcInterval: hcDuration}
 
 	protocols := map[int]int{}
 
@@ -182,6 +182,7 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 		if err != nil {
 			return err
 		}
+		f.hcInterval = dur
 		for i := range f.proxies {
 			f.proxies[i].hcInterval = dur
 		}
