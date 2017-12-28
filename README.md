@@ -22,7 +22,7 @@ The health checks are done every *0.5s*. After *two* failed checks the upstream 
 unhealthy. The health checks use a recursive DNS query (`. IN NS`) to get upstream health. Any
 response that is not an error (REFUSED, NOTIMPL, SERVFAIL, etc) is taken as a healthy upstream. The
 health check uses the same protocol as specific in the **TO**. On startup each upstream is marked
-unhealthy until it passes a healthcheck.
+unhealthy until it passes a healthcheck. A 0 duration will disable any healthchecks.
 
 Multiple upstreams are randomized on first use. When a healthy proxy returns an error during the
 exchange the next upstream in the list is tried.
@@ -46,6 +46,7 @@ forward FROM TO... {
   Requests that match none of these names will be passed through.
 * `force_tcp`, use TCP even when the request comes in over UDP.
 * `health_checks`, use a different **DURATION** for health checking, the default duration is 2s.
+  A value of 0 disables the healthchecks completely.
 * `max_fails` is the number of subsequent failed health checks that are needed before considering
   a backend to be down. If 0, the backend will never be marked as down. Default is 2.
 * `expire` **DURATION**, expire connections after this time, the default is 10s.

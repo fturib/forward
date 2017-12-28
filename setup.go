@@ -59,6 +59,13 @@ func setup(c *caddy.Controller) error {
 
 // OnStartup starts a goroutines for all proxies.
 func (f *Forward) OnStartup() (err error) {
+	if f.hcInterval == 0 {
+		for _, p := range f.proxies {
+			p.host.fails = 0
+		}
+		return nil
+	}
+
 	for _, p := range f.proxies {
 		go p.healthCheck()
 	}
@@ -67,6 +74,10 @@ func (f *Forward) OnStartup() (err error) {
 
 // OnShutdown stops all configures proxies.
 func (f *Forward) OnShutdown() error {
+	if f.hcInterval == 0 {
+		return nil
+	}
+
 	for _, p := range f.proxies {
 		p.close()
 	}
