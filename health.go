@@ -44,11 +44,15 @@ func (h *host) send() error {
 	hcping.SetQuestion(".", dns.TypeNS)
 	hcping.RecursionDesired = false
 
-	_, _, err := h.client.Exchange(hcping, h.addr)
-	// Truncated means we've seen TC, which is good enough for us.
-	if err == dns.ErrTruncated {
-		err = nil
+	m, _, err := h.client.Exchange(hcping, h.addr)
+	// If we got a header, we're alright, basically only care about I/O errors 'n stuff
+	if err != nil && m != nil {
+		// Silly check, something sane came back
+		if m.Response || m.Opcode == dns.OpcodeQuery {
+			err = nil
+		}
 	}
+
 	return err
 }
 
