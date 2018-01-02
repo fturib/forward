@@ -2,6 +2,7 @@ package forward
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -25,7 +26,10 @@ func init() {
 func setup(c *caddy.Controller) error {
 	f, err := parseForward(c)
 	if err != nil {
-		return err
+		return plugin.Error("foward", err)
+	}
+	if f.Len() > max {
+		return plugin.Error("forward", fmt.Errorf("more than %d TOs configured: %d", max, f.Len()))
 	}
 
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
@@ -226,3 +230,5 @@ func parseBlock(c *caddy.Controller, f *Forward) error {
 
 	return nil
 }
+
+const max = 15 // Maximum number of upstreams.

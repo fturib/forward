@@ -38,6 +38,9 @@ type Forward struct {
 	Next plugin.Handler
 }
 
+// Len returns the number of configured proxies.
+func (f Forward) Len() int { return len(f.proxies) }
+
 // Name implements plugin.Handler.
 func (f Forward) Name() string { return "forward" }
 
