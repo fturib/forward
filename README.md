@@ -16,7 +16,7 @@ forward FROM TO...
 
 * **FROM** is the base domain to match for the request to be forwarded.
 * **TO...** are the destination endpoints to forward to. The **TO** syntax allows you to specify
-  a protocol, `tls://9.9.9.9` or `dns://` for plain DNS.
+  a protocol, `tls://9.9.9.9` or `dns://` for plain DNS. The number of upstreams is limited to 15.
 
 The health checks are done every *0.5s*. After *two* failed checks the upstream is considered
 unhealthy. The health checks use a recursive DNS query (`. IN NS`) to get upstream health. Any
