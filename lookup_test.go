@@ -9,7 +9,7 @@ import (
 	"github.com/miekg/dns"
 )
 
-func TestForward(t *testing.T) {
+func TestLookup(t *testing.T) {
 	s := dnstest.NewServer(func(w dns.ResponseWriter, r *dns.Msg) {
 		ret := new(dns.Msg)
 		ret.SetReply(r)
@@ -24,8 +24,7 @@ func TestForward(t *testing.T) {
 	defer f.Close()
 
 	state := request.Request{W: &test.ResponseWriter{}, Req: new(dns.Msg)}
-	state.Req.SetQuestion("example.org.", dns.TypeA)
-	resp, err := f.Forward(state)
+	resp, err := f.Lookup(state, "example.org.", dns.TypeA)
 	if err != nil {
 		t.Fatal("Expected to receive reply, but didn't")
 	}

@@ -1,7 +1,6 @@
 package forward
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net"
 	"strconv"
@@ -76,7 +75,7 @@ func (f *Forward) OnStartup() (err error) {
 	return nil
 }
 
-// OnShutdown stops all configures proxies.
+// OnShutdown stops all configured proxies.
 func (f *Forward) OnShutdown() error {
 	if f.hcInterval == 0 {
 		return nil
@@ -88,8 +87,13 @@ func (f *Forward) OnShutdown() error {
 	return nil
 }
 
-func parseForward(c *caddy.Controller) (Forward, error) {
-	f := Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second, hcInterval: hcDuration}
+// Close is a synonym for OnShutdown().
+func (f *Forward) Close() {
+	f.OnShutdown()
+}
+
+func parseForward(c *caddy.Controller) (*Forward, error) {
+	f := New()
 
 	protocols := map[int]int{}
 
@@ -134,12 +138,12 @@ func parseForward(c *caddy.Controller) (Forward, error) {
 
 			// We can't set tlsConfig here, because we haven't parsed it yet.
 			// We set it below at the end of parseBlock.
-			p := newProxy(h)
+			p := NewProxy(h)
 			f.proxies = append(f.proxies, p)
 		}
 
 		for c.NextBlock() {
-			if err := parseBlock(c, &f); err != nil {
+			if err := parseBlock(c, f); err != nil {
 				return f, err
 			}
 		}

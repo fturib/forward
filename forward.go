@@ -9,7 +9,6 @@ import (
 	"errors"
 	"log"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/coredns/coredns/plugin"
@@ -22,7 +21,7 @@ import (
 // Forward represents a plugin instance that can proxy requests to another (DNS) server. It has a list
 // of proxies each representing one upstream proxy.
 type Forward struct {
-	proxies []*proxy
+	proxies []*Proxy
 
 	from    string
 	ignored []string
@@ -38,14 +37,26 @@ type Forward struct {
 	Next plugin.Handler
 }
 
+// New returns a new Forward.
+func New() *Forward {
+	f := &Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second, hcInterval: hcDuration}
+	return f
+}
+
+// SetProxy appends p to the proxy list and starts healthchecking.
+func (f *Forward) SetProxy(p *Proxy) {
+	f.proxies = append(f.proxies, p)
+	go p.healthCheck()
+}
+
 // Len returns the number of configured proxies.
-func (f Forward) Len() int { return len(f.proxies) }
+func (f *Forward) Len() int { return len(f.proxies) }
 
 // Name implements plugin.Handler.
-func (f Forward) Name() string { return "forward" }
+func (f *Forward) Name() string { return "forward" }
 
 // ServeDNS implements plugin.Handler.
-func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 
 	state := request.Request{W: w, Req: r}
 	if !f.match(state) {
@@ -57,55 +68,13 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 			continue
 		}
 
-		start := time.Now()
-
-		proto := state.Proto()
-		if f.forceTCP {
-			proto = "tcp"
-		}
-		if proxy.host.tlsConfig != nil {
-			proto = "tcp-tls"
-		}
-
-		conn, err := proxy.Dial(proto)
+		ret, err := proxy.connect(state, f.forceTCP, true)
 		if err != nil {
-			log.Printf("[WARNING] Failed to connect with %s to %s: %s", proto, proxy.host.addr, err)
-			continue
-		}
-
-		// Set buffer size correctly for this client.
-		conn.UDPSize = uint16(state.Size())
-		if conn.UDPSize < 512 {
-			conn.UDPSize = 512
-		}
-
-		conn.SetWriteDeadline(time.Now().Add(timeout))
-		if err := conn.WriteMsg(state.Req); err != nil {
-			log.Printf("[WARNING] Failed to write with %s to %s: %s", proto, proxy.host.addr, err)
-			conn.Close() // not giving it back
-			continue
-		}
-
-		conn.SetReadDeadline(time.Now().Add(timeout))
-		ret, err := conn.ReadMsg()
-		if err != nil {
-			log.Printf("[WARNING] Failed to read with %s to %s: %s", proto, proxy.host.addr, err)
-			conn.Close() // not giving it back
+			log.Printf("[WARNING] Failed to connect to %s: %s", proxy.host.addr, err)
 			continue
 		}
 
 		w.WriteMsg(ret)
-
-		proxy.Yield(conn)
-
-		rc, ok := dns.RcodeToString[ret.Rcode]
-		if !ok {
-			rc = strconv.Itoa(ret.Rcode)
-		}
-
-		RequestCount.WithLabelValues(proxy.host.addr).Add(1)
-		RcodeCount.WithLabelValues(rc, proxy.host.addr).Add(1)
-		RequestDuration.WithLabelValues(proxy.host.addr).Observe(time.Since(start).Seconds())
 
 		return 0, nil
 	}
@@ -113,7 +82,7 @@ func (f Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 	return dns.RcodeServerFailure, errNoHealthy
 }
 
-func (f Forward) match(state request.Request) bool {
+func (f *Forward) match(state request.Request) bool {
 	from := f.from
 
 	if !plugin.Name(from).Matches(state.Name()) || !f.isAllowedDomain(state.Name()) {
@@ -123,7 +92,7 @@ func (f Forward) match(state request.Request) bool {
 	return true
 }
 
-func (f Forward) isAllowedDomain(name string) bool {
+func (f *Forward) isAllowedDomain(name string) bool {
 	if dns.Name(name) == dns.Name(f.from) {
 		return true
 	}
@@ -138,20 +107,20 @@ func (f Forward) isAllowedDomain(name string) bool {
 
 // list returns a randomized set of proxies to be used for this client. If the client was
 // know to any of the proxies it will be put first.
-func (f Forward) list() []*proxy {
+func (f *Forward) list() []*Proxy {
 	switch len(f.proxies) {
 	case 1:
 		return f.proxies
 	case 2:
 		if rand.Int()%2 == 0 {
-			return []*proxy{f.proxies[1], f.proxies[0]} // swap
+			return []*Proxy{f.proxies[1], f.proxies[0]} // swap
 
 		}
 		return f.proxies // normal
 	}
 
 	perms := rand.Perm(len(f.proxies))
-	rnd := make([]*proxy, len(f.proxies))
+	rnd := make([]*Proxy, len(f.proxies))
 
 	for i, p := range perms {
 		rnd[i] = f.proxies[p]
