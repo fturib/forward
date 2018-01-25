@@ -2,9 +2,11 @@
 
 *forward* facilitates proxying DNS messages to upstream resolvers.
 
-The *forward* plugin is generally faster (~30%) than *proxy* as it re-uses already openened sockets
+The *forward* plugin is generally faster (~30+%) than *proxy* as it re-uses already openened sockets
 to the upstreams. It supports UDP, TCP and DNS-over-TLS and uses inband healthchecking that is
 enabled by default.
+When *all* upstreams are down it assumes healtchecking as a mechanism has failed and will try to
+connect to a random upstream (which may or may not work).
 
 ## Syntax
 

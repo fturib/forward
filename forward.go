@@ -63,15 +63,26 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		return plugin.NextOrFailure(f.Name(), f.Next, ctx, w, r)
 	}
 
+	fails := 0
 	for _, proxy := range f.list() {
 		if proxy.Down(f.maxfails) {
-			continue
+			fails++
+			if fails < len(f.proxies) {
+				continue
+			}
+			// All upstream proxies are dead, assume healtcheck is complete broken and randomly
+			// select an upstream to connect to.
+			proxy = f.list()[0]
+			log.Printf("[WARNING] All upstreams down, picking random one to connect to %s", proxy.host.addr)
 		}
 
 		ret, err := proxy.connect(state, f.forceTCP, true)
 		if err != nil {
 			log.Printf("[WARNING] Failed to connect to %s: %s", proxy.host.addr, err)
-			continue
+			if fails < len(f.proxies) {
+				continue
+			}
+			break
 		}
 
 		w.WriteMsg(ret)
