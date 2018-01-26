@@ -15,6 +15,7 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	ot "github.com/opentracing/opentracing-go"
 	"golang.org/x/net/context"
 )
 
@@ -64,6 +65,9 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	}
 
 	fails := 0
+	var span, child ot.Span
+	span = ot.SpanFromContext(ctx)
+
 	for _, proxy := range f.list() {
 		if proxy.Down(f.maxfails) {
 			fails++
@@ -76,7 +80,17 @@ func (f *Forward) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 			log.Printf("[WARNING] All upstreams down, picking random one to connect to %s", proxy.host.addr)
 		}
 
-		ret, err := proxy.connect(state, f.forceTCP, true)
+		if span != nil {
+			child = span.Tracer().StartSpan("connect", ot.ChildOf(span.Context()))
+			ctx = ot.ContextWithSpan(ctx, child)
+		}
+
+		ret, err := proxy.connect(ctx, state, f.forceTCP, true)
+
+		if child != nil {
+			child.Finish()
+		}
+
 		if err != nil {
 			log.Printf("[WARNING] Failed to connect to %s: %s", proxy.host.addr, err)
 			if fails < len(f.proxies) {

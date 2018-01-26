@@ -12,6 +12,7 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	"golang.org/x/net/context"
 )
 
 // Forward forward the request in state as-is. Unlike Lookup that adds EDNS0 suffix to the message.
@@ -34,7 +35,7 @@ func (f *Forward) Forward(state request.Request) (*dns.Msg, error) {
 			log.Printf("[WARNING] All upstreams down, picking random one to connect to %s", proxy.host.addr)
 		}
 
-		ret, err := proxy.connect(state, f.forceTCP, true)
+		ret, err := proxy.connect(context.Background(), state, f.forceTCP, true)
 		if err != nil {
 			log.Printf("[WARNING] Failed to connect to %s: %s", proxy.host.addr, err)
 			if fails < len(f.proxies) {
