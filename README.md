@@ -57,7 +57,7 @@ forward FROM TO... {
 * `tls_servername` **NAME** allows you to set a server name in the TLS configuration; for instance 9.9.9.9
   needs this to be set to `dns.quad9.net`.
 
-The upstream selection is done via round robin. If the socket for this client isn't known *forward*
+The upstream selection is done via random selection. If the socket for this client isn't known *forward*
 will randomly choose one. If this turns out to be unhealthy, the next one is tried.
 
 Also note the TLS config is "global" for the whole forwarding proxy if you need a different
