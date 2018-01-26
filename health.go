@@ -56,6 +56,7 @@ func (h *host) send() error {
 	return err
 }
 
+// down returns true is this host has more than maxfails fails.
 func (h *host) down(maxfails uint32) bool {
 	if maxfails == 0 {
 		return false

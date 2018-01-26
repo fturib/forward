@@ -5,7 +5,10 @@
 package forward
 
 import (
+	"crypto/tls"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/coredns/coredns/request"
 
@@ -13,16 +16,33 @@ import (
 )
 
 // Forward forward the request in state as-is. Unlike Lookup that adds EDNS0 suffix to the message.
-func (f Forward) Forward(state request.Request) (*dns.Msg, error) {
+// Forward may be called with a nil f, an error is returned in that case.
+func (f *Forward) Forward(state request.Request) (*dns.Msg, error) {
+	if f == nil {
+		return nil, fmt.Errorf("no forwarder defined")
+	}
+
+	fails := 0
 	for _, proxy := range f.list() {
 		if proxy.Down(f.maxfails) {
-			continue
+			fails++
+			if fails < len(f.proxies) {
+				continue
+			}
+			// All upstream proxies are dead, assume healtcheck is complete broken and randomly
+			// select an upstream to connect to.
+			proxy = f.list()[0]
+			log.Printf("[WARNING] All upstreams down, picking random one to connect to %s", proxy.host.addr)
 		}
 
 		ret, err := proxy.connect(state, f.forceTCP, true)
 		if err != nil {
-			log.Printf("[WARNING] Failed to connect %s: %s", proxy.host.addr, err)
-			continue
+			log.Printf("[WARNING] Failed to connect to %s: %s", proxy.host.addr, err)
+			if fails < len(f.proxies) {
+				continue
+			}
+			break
+
 		}
 
 		return ret, nil
@@ -32,7 +52,12 @@ func (f Forward) Forward(state request.Request) (*dns.Msg, error) {
 
 // Lookup will use name and type to forge a new message and will send that upstream. It will
 // set any EDNS0 options correctly so that downstream will be able to process the reply.
-func (f Forward) Lookup(state request.Request, name string, typ uint16) (*dns.Msg, error) {
+// Lookup may be called with a nil f, an error is returned in that case.
+func (f *Forward) Lookup(state request.Request, name string, typ uint16) (*dns.Msg, error) {
+	if f == nil {
+		return nil, fmt.Errorf("no forwarder defined")
+	}
+
 	req := new(dns.Msg)
 	req.SetQuestion(name, typ)
 	state.SizeAndDo(req)
@@ -40,4 +65,14 @@ func (f Forward) Lookup(state request.Request, name string, typ uint16) (*dns.Ms
 	state2 := request.Request{W: state.W, Req: req}
 
 	return f.Forward(state2)
+}
+
+// NewLookup returns a Forward that can be used for plugin that need an upstream to resolve external names.
+func NewLookup(addr []string) *Forward {
+	f := &Forward{maxfails: 2, tlsConfig: new(tls.Config), expire: 10 * time.Second, hcInterval: hcDuration}
+	for i := range addr {
+		p := NewProxy(addr[i])
+		f.SetProxy(p)
+	}
+	return f
 }
