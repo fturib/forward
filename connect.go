@@ -11,9 +11,10 @@ import (
 	"github.com/coredns/coredns/request"
 
 	"github.com/miekg/dns"
+	"golang.org/x/net/context"
 )
 
-func (p *Proxy) connect(state request.Request, forceTCP, metric bool) (*dns.Msg, error) {
+func (p *Proxy) connect(ctx context.Context, state request.Request, forceTCP, metric bool) (*dns.Msg, error) {
 	start := time.Now()
 
 	proto := state.Proto()
