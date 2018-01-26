@@ -142,4 +142,5 @@ func (f *Forward) list() []*Proxy {
 var (
 	errInvalidDomain = errors.New("invalid domain for proxy")
 	errNoHealthy     = errors.New("no healthy proxies")
+	errNoForward     = errors.New("no forwarder defined")
 )

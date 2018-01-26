@@ -6,7 +6,6 @@ package forward
 
 import (
 	"crypto/tls"
-	"fmt"
 	"log"
 	"time"
 
@@ -19,7 +18,7 @@ import (
 // Forward may be called with a nil f, an error is returned in that case.
 func (f *Forward) Forward(state request.Request) (*dns.Msg, error) {
 	if f == nil {
-		return nil, fmt.Errorf("no forwarder defined")
+		return nil, errNoForward
 	}
 
 	fails := 0
@@ -55,7 +54,7 @@ func (f *Forward) Forward(state request.Request) (*dns.Msg, error) {
 // Lookup may be called with a nil f, an error is returned in that case.
 func (f *Forward) Lookup(state request.Request, name string, typ uint16) (*dns.Msg, error) {
 	if f == nil {
-		return nil, fmt.Errorf("no forwarder defined")
+		return nil, errNoForward
 	}
 
 	req := new(dns.Msg)
